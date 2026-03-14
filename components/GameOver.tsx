@@ -3,8 +3,6 @@
 import { useState } from "react";
 import type { RoundResult } from "@/lib/storage";
 import type { MixleStats } from "@/lib/stats";
-import Leaderboard from "./Leaderboard";
-
 interface Props {
   roundResults: RoundResult[];
   totalScore: number;
@@ -74,8 +72,6 @@ export default function GameOver({
           </div>
         ))}
       </div>
-
-      <Leaderboard dayNumber={dayNum} />
 
       <div className="share-preview">{shareText}</div>
       <button className="share-btn" onClick={handleShare}>
