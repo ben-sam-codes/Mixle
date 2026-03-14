@@ -16,9 +16,7 @@ import {
   getNickname,
   setNickname,
   generateNickname,
-  getPlayerId,
 } from "@/lib/nickname";
-import { submitScore } from "@/lib/leaderboard";
 import RoundIndicator from "./RoundIndicator";
 import LetterSlot from "./LetterSlot";
 import WordZone from "./WordZone";
@@ -69,11 +67,11 @@ export default function Game() {
     clearOldStates();
 
     const saved = loadGameState();
-    if (saved) {
+    if (saved && Array.isArray(saved.letters) && saved.letters.length > 0) {
       setRound(saved.round);
       setLetters(saved.letters);
-      setSelectedIndices(saved.selectedIndices);
-      setRoundResults(saved.roundResults);
+      setSelectedIndices(saved.selectedIndices || []);
+      setRoundResults(saved.roundResults || []);
       setGameOver(saved.gameOver);
       setGameOverReason(saved.gameOverReason || "completed");
       setTotalScore(saved.totalScore);
@@ -111,20 +109,18 @@ export default function Game() {
     wordsLoaded,
   ]);
 
-  // When game ends, prompt for nickname if not set, then submit score
+  // When game ends, prompt for nickname if not set
   useEffect(() => {
     if (!gameOver || scoreSubmittedRef.current) return;
 
     const existing = getNickname();
     if (existing) {
       scoreSubmittedRef.current = true;
-      const playerId = getPlayerId();
-      submitScore(playerId, existing, totalScore, dayNum, roundResults.length);
     } else {
       setDefaultNickname(generateNickname());
       setShowNickname(true);
     }
-  }, [gameOver, totalScore, dayNum, roundResults.length]);
+  }, [gameOver]);
 
   const selectedLetters = selectedIndices.map((i) => letters[i]);
   const currentWord = selectedLetters.join("");
@@ -215,13 +211,7 @@ export default function Game() {
     setNickname(name);
     setShowNickname(false);
     hasNicknameRef.current = true;
-
-    // Submit score now that we have a nickname
-    if (gameOver && !scoreSubmittedRef.current) {
-      scoreSubmittedRef.current = true;
-      const playerId = getPlayerId();
-      submitScore(playerId, name, totalScore, dayNum, roundResults.length);
-    }
+    scoreSubmittedRef.current = true;
   };
 
   const generateShareText = () => {

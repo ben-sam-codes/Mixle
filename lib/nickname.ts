@@ -39,16 +39,7 @@ export function generateNickname(): string {
   return `${adj1}-${adj2}-${animal}`;
 }
 
-export function generatePlayerId(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 const NICKNAME_KEY = "mixle-nickname";
-const PLAYER_ID_KEY = "mixle-player-id";
 
 export function getNickname(): string | null {
   try {
@@ -64,15 +55,3 @@ export function setNickname(name: string): void {
   } catch {}
 }
 
-export function getPlayerId(): string {
-  try {
-    let id = localStorage.getItem(PLAYER_ID_KEY);
-    if (!id) {
-      id = generatePlayerId();
-      localStorage.setItem(PLAYER_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return generatePlayerId();
-  }
-}
