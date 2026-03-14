@@ -1,3 +1,5 @@
+import { track } from "@vercel/analytics";
+
 export interface MixleStats {
   gamesPlayed: number;
   highScore: number;
@@ -42,6 +44,10 @@ export function updateStats(totalScore: number): MixleStats {
   const today = getTodayDate();
 
   if (stats.lastPlayedDate === today) return stats;
+
+  if (stats.gamesPlayed > 0) {
+    track("repeat_visit", { daysAway: stats.lastPlayedDate ? Math.round((new Date(today + "T00:00:00").getTime() - new Date(stats.lastPlayedDate + "T00:00:00").getTime()) / 86400000) : 0 });
+  }
 
   stats.gamesPlayed++;
   if (totalScore > stats.highScore) stats.highScore = totalScore;

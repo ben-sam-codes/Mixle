@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { track } from "@vercel/analytics";
 import type { RoundResult } from "@/lib/storage";
 import type { MixleStats } from "@/lib/stats";
 interface Props {
@@ -26,6 +27,7 @@ export default function GameOver({
     try {
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
+      track("share", { score: totalScore, dayNum });
       setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
