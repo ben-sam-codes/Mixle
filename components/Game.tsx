@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getDailySeed, getDayNumber, seededRandom } from "@/lib/rng";
-import { generateAllDraws, pickWeightedLetter } from "@/lib/draws";
-import { scoreWord, setWordSet } from "@/lib/scoring";
-import { loadWords } from "@/lib/words";
+import { getDailySeed, getDayNumber } from "@/lib/rng";
+import { generateRoundLetters } from "@/lib/draws";
+import { scoreWord } from "@/lib/scoring";
+import { loadWords, isValidWord, hasAnyValidWord } from "@/lib/words";
 import {
   saveGameState,
   loadGameState,
@@ -12,283 +12,231 @@ import {
   type RoundResult,
 } from "@/lib/storage";
 import { loadStats, updateStats, type MixleStats } from "@/lib/stats";
+import {
+  getNickname,
+  setNickname,
+  generateNickname,
+  getPlayerId,
+} from "@/lib/nickname";
+import { submitScore } from "@/lib/leaderboard";
 import RoundIndicator from "./RoundIndicator";
 import LetterSlot from "./LetterSlot";
-import PickPhase from "./PickPhase";
-import ArrangePhase from "./ArrangePhase";
+import WordZone from "./WordZone";
 import ScoreCard from "./ScoreCard";
 import GameOver from "./GameOver";
 import HelpModal from "./HelpModal";
+import NicknameModal from "./NicknameModal";
 
 export default function Game() {
   const seed = getDailySeed();
   const dayNum = getDayNumber();
-  const allDraws = useRef(generateAllDraws(seed)).current;
 
   const [round, setRound] = useState(0);
-  const [step, setStep] = useState(0);
   const [letters, setLetters] = useState<string[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [roundResults, setRoundResults] = useState<RoundResult[]>([]);
   const [gameOver, setGameOver] = useState(false);
+  const [gameOverReason, setGameOverReason] = useState<
+    "completed" | "no-word"
+  >("completed");
+  const [totalScore, setTotalScore] = useState(0);
+  const [showingScore, setShowingScore] = useState(false);
+  const [currentRoundScore, setCurrentRoundScore] = useState<ReturnType<
+    typeof scoreWord
+  > | null>(null);
+
   const [showHelp, setShowHelp] = useState(false);
-  const [roundScored, setRoundScored] = useState(false);
-  const [arranging, setArranging] = useState(false);
-  const [swapsLeft, setSwapsLeft] = useState(1);
-  const [swappedIndex, setSwappedIndex] = useState<number | null>(null);
+  const [showNickname, setShowNickname] = useState(false);
+  const [nickname, setNicknameState] = useState("");
+  const [defaultNickname, setDefaultNickname] = useState("");
   const [wordsLoaded, setWordsLoaded] = useState(false);
   const [stats, setStats] = useState<MixleStats | null>(null);
 
-  // Drag state
-  const [dragFrom, setDragFrom] = useState<number | null>(null);
-  const [dragOver, setDragOver] = useState<number | null>(null);
-  const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(
-    null
-  );
-  const isDragging = useRef(false);
-  const dragFromRef = useRef<number | null>(null);
-  const dragOverRef = useRef<number | null>(null);
-  const lettersRef = useRef(letters);
-  lettersRef.current = letters;
-
-  const swapRng = useRef(seededRandom(seed + 99999)).current;
-  const slotsContainerRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
+  const scoreSubmittedRef = useRef(false);
 
   // Load words on mount
   useEffect(() => {
-    loadWords().then((ws) => {
-      setWordSet(ws);
-      setWordsLoaded(true);
-    });
+    loadWords().then(() => setWordsLoaded(true));
   }, []);
 
-  // Restore state on mount
+  // Check nickname on mount
+  useEffect(() => {
+    const existing = getNickname();
+    if (existing) {
+      setNicknameState(existing);
+    } else {
+      const generated = generateNickname();
+      setDefaultNickname(generated);
+      setShowNickname(true);
+    }
+  }, []);
+
+  // Generate initial letters once words are loaded
   useEffect(() => {
     if (!wordsLoaded || restoredRef.current) return;
     restoredRef.current = true;
     clearOldStates();
+
     const saved = loadGameState();
     if (saved) {
       setRound(saved.round);
-      setStep(saved.step);
       setLetters(saved.letters);
+      setSelectedIndices(saved.selectedIndices);
       setRoundResults(saved.roundResults);
       setGameOver(saved.gameOver);
-      setArranging(saved.arranging);
-      if (saved.swapsUsed) setSwapsLeft(0);
+      setGameOverReason(saved.gameOverReason || "completed");
+      setTotalScore(saved.totalScore);
       if (saved.gameOver) {
-        const best = Math.max(
-          ...saved.roundResults.map((r) => r.score.total),
-          0
-        );
-        setStats(updateStats(best));
+        setStats(updateStats(saved.totalScore));
       }
+      return;
     }
-  }, [wordsLoaded]);
 
-  const currentDraws = allDraws[round];
-  const pickingDone = step >= 5;
-  const isRoundDone = pickingDone && !arranging;
-  const currentWord = letters.join("");
-
-  const getReorderedLetters = useCallback(() => {
-    if (dragFrom === null || dragOver === null || dragFrom === dragOver)
-      return letters;
-    const arr = [...letters];
-    const [item] = arr.splice(dragFrom, 1);
-    arr.splice(dragOver, 0, item);
-    return arr;
-  }, [letters, dragFrom, dragOver]);
-
-  const previewWord = arranging
-    ? getReorderedLetters().join("")
-    : currentWord;
-  const wordScore = isRoundDone ? scoreWord(currentWord) : null;
-  const arrangePreview = arranging ? scoreWord(previewWord) : null;
+    // Fresh game: generate round 1 letters
+    const firstLetters = generateRoundLetters(seed, 0, []);
+    setLetters(firstLetters);
+  }, [wordsLoaded, seed]);
 
   // Save state on changes
   useEffect(() => {
     if (!wordsLoaded || !restoredRef.current) return;
     saveGameState({
       round,
-      step,
       letters,
+      selectedIndices,
       roundResults,
       gameOver,
-      swapsUsed: swapsLeft === 0,
-      arranging,
+      gameOverReason,
+      totalScore,
     });
-  }, [round, step, letters, roundResults, gameOver, swapsLeft, arranging, wordsLoaded]);
+  }, [
+    round,
+    letters,
+    selectedIndices,
+    roundResults,
+    gameOver,
+    gameOverReason,
+    totalScore,
+    wordsLoaded,
+  ]);
 
-  const getSlotWidth = () => {
-    const c = slotsContainerRef.current;
-    if (!c) return 66;
-    return c.getBoundingClientRect().width / 5;
-  };
-
-  const getSlotTransform = (i: number): string => {
-    if (dragFrom === null || dragOver === null || dragFrom === dragOver)
-      return "";
-    if (i === dragFrom) return "";
-    const sw = getSlotWidth();
-    if (dragFrom < dragOver) {
-      if (i > dragFrom && i <= dragOver) return `translateX(${-sw}px)`;
-    } else {
-      if (i >= dragOver && i < dragFrom) return `translateX(${sw}px)`;
+  // Submit score to leaderboard when game ends
+  useEffect(() => {
+    if (gameOver && !scoreSubmittedRef.current && nickname) {
+      scoreSubmittedRef.current = true;
+      const playerId = getPlayerId();
+      submitScore(
+        playerId,
+        nickname,
+        totalScore,
+        dayNum,
+        roundResults.length
+      );
     }
-    return "";
-  };
+  }, [gameOver, nickname, totalScore, dayNum, roundResults.length]);
 
-  const getSlotIndexFromX = (clientX: number): number | null => {
-    const c = slotsContainerRef.current;
-    if (!c) return null;
-    const rect = c.getBoundingClientRect();
-    const x = clientX - rect.left;
-    return Math.max(0, Math.min(4, Math.floor(x / (rect.width / 5))));
-  };
+  const selectedLetters = selectedIndices.map((i) => letters[i]);
+  const currentWord = selectedLetters.join("");
 
-  const handlePick = useCallback(
-    (letter: string) => {
-      if (pickingDone || gameOver) return;
-      const newLetters = [...letters, letter];
-      setLetters(newLetters);
-      const newStep = step + 1;
-      setStep(newStep);
-      if (newStep >= 5) setArranging(true);
+  const handleLetterTap = useCallback(
+    (index: number) => {
+      if (gameOver || showingScore) return;
+      setSelectedIndices((prev) => {
+        const existingPos = prev.indexOf(index);
+        if (existingPos !== -1) {
+          // Deselect
+          return prev.filter((i) => i !== index);
+        }
+        // Select
+        return [...prev, index];
+      });
     },
-    [pickingDone, gameOver, letters, step]
+    [gameOver, showingScore]
   );
 
-  const handlePointerDown = (e: React.PointerEvent, index: number) => {
-    if (!arranging) return;
-    if (e.button && e.button !== 0) return;
-    e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    isDragging.current = true;
-    dragFromRef.current = index;
-    dragOverRef.current = index;
-    setDragFrom(index);
-    setDragOver(index);
-    setGhostPos({ x: e.clientX, y: e.clientY });
-  };
-
-  const handlePointerMove = useCallback((e: PointerEvent) => {
-    if (!isDragging.current) return;
-    e.preventDefault();
-    setGhostPos({ x: e.clientX, y: e.clientY });
-    const idx = getSlotIndexFromX(e.clientX);
-    if (idx !== null) {
-      dragOverRef.current = idx;
-      setDragOver(idx);
-    }
+  const handleClear = useCallback(() => {
+    setSelectedIndices([]);
   }, []);
 
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    const from = dragFromRef.current;
-    const to = dragOverRef.current;
-    if (from !== null && to !== null && from !== to) {
-      const arr = [...lettersRef.current];
-      const [item] = arr.splice(from, 1);
-      arr.splice(to, 0, item);
-      setLetters(arr);
-    }
-    dragFromRef.current = null;
-    dragOverRef.current = null;
-    setDragFrom(null);
-    setDragOver(null);
-    setGhostPos(null);
-  }, []);
+  const handleSubmit = useCallback(() => {
+    if (currentWord.length < 3 || !isValidWord(currentWord)) return;
 
-  useEffect(() => {
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("pointercancel", handlePointerUp);
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerUp);
-    };
-  }, [handlePointerMove, handlePointerUp]);
+    const usedAll = selectedIndices.length === letters.length;
+    const score = scoreWord(currentWord, usedAll);
 
-  const handleLockIn = () => {
-    setArranging(false);
-    setDragFrom(null);
-    setDragOver(null);
-    setGhostPos(null);
-  };
+    // Calculate carry-over letters
+    const usedSet = new Set(selectedIndices);
+    const carryOver = letters.filter((_, i) => !usedSet.has(i));
 
-  const handleSwapOut = (index: number) => {
-    if (swapsLeft <= 0 || !arranging) return;
-    const oldLetter = letters[index];
-    let newLetter = oldLetter;
-    let attempts = 0;
-    while (newLetter === oldLetter && attempts < 20) {
-      newLetter = pickWeightedLetter(swapRng);
-      attempts++;
-    }
-    const newLetters = [...letters];
-    newLetters[index] = newLetter;
-    setLetters(newLetters);
-    setSwapsLeft(0);
-    setSwappedIndex(index);
-    setTimeout(() => setSwappedIndex(null), 600);
-  };
-
-  const handleNextRound = () => {
     const result: RoundResult = {
       word: currentWord,
-      score: wordScore!,
-      usedSwap: swapsLeft === 0,
+      score,
+      lettersUsed: selectedLetters,
+      carryOverLetters: carryOver,
     };
-    const newResults = [...roundResults, result];
-    setRoundResults(newResults);
-    setRoundScored(false);
+
+    setCurrentRoundScore(score);
+    setShowingScore(true);
+
+    const newTotal = totalScore + score.total;
+    setTotalScore(newTotal);
+    setRoundResults((prev) => [...prev, result]);
+    setSelectedIndices([]);
+  }, [currentWord, selectedIndices, letters, selectedLetters, totalScore]);
+
+  const handleNextRound = useCallback(() => {
+    setShowingScore(false);
+    setCurrentRoundScore(null);
+
+    const lastResult = roundResults[roundResults.length - 1];
+    const carryOver = lastResult?.carryOverLetters || [];
+
     if (round >= 2) {
+      // Game complete
       setGameOver(true);
-      const best = Math.max(...newResults.map((r) => r.score.total), 0);
-      setStats(updateStats(best));
-    } else {
-      setRound(round + 1);
-      setStep(0);
-      setLetters([]);
-      setArranging(false);
-      setDragFrom(null);
-      setDragOver(null);
-      setGhostPos(null);
-      setSwapsLeft(1);
-      setSwappedIndex(null);
+      setGameOverReason("completed");
+      setStats(updateStats(totalScore));
+      return;
     }
+
+    const nextRound = round + 1;
+    const nextLetters = generateRoundLetters(seed, nextRound, carryOver);
+
+    // Check if any valid word can be formed
+    if (!hasAnyValidWord(nextLetters)) {
+      setGameOver(true);
+      setGameOverReason("no-word");
+      setStats(updateStats(totalScore));
+      setLetters(nextLetters);
+      setRound(nextRound);
+      return;
+    }
+
+    setRound(nextRound);
+    setLetters(nextLetters);
+  }, [round, roundResults, seed, totalScore]);
+
+  const handleNicknameConfirm = (name: string) => {
+    setNickname(name);
+    setNicknameState(name);
+    setShowNickname(false);
   };
 
-  useEffect(() => {
-    if (isRoundDone && !roundScored) setRoundScored(true);
-  }, [isRoundDone, roundScored]);
-
-  const bestResult = gameOver
-    ? roundResults.reduce<RoundResult | null>(
-        (best, r) =>
-          r.score.total > (best?.score?.total || 0) ? r : best,
-        null
-      )
-    : null;
-
   const generateShareText = () => {
-    const bestScore = Math.max(...roundResults.map((r) => r.score.total));
     const lines = [`MIXLE #${dayNum}`];
     roundResults.forEach((r, i) => {
-      const pts = `${r.score.total}pts`;
-      const isBest = r.score.valid && r.score.total === bestScore && bestScore > 0;
-      const bestMarker = isBest ? " 🔥" : "";
-      const swap = r.usedSwap ? " 🔄" : "";
-      if (r.score.valid) {
-        lines.push(`R${i + 1}: 🟩🟩🟩🟩🟩 ${pts}${bestMarker}${swap}`);
-      } else {
-        lines.push(`R${i + 1}: 🟨🟨⬜⬜⬜ ${pts}${swap}`);
-      }
+      const usedAll = r.score.allUsedBonus > 0;
+      lines.push(
+        `R${i + 1}: ${r.word.toUpperCase()} ${r.score.total}pts${
+          usedAll ? " ⭐" : ""
+        }`
+      );
     });
-    lines.push(`Best: ${bestScore}pts`);
+    if (gameOverReason === "no-word") {
+      lines.push(`Game Over! (${roundResults.length}/3 rounds)`);
+    }
+    lines.push(`Total: ${totalScore}pts`);
     lines.push("mixle.fun");
     return lines.join("\n");
   };
@@ -308,87 +256,72 @@ export default function Game() {
     <div className="app">
       <div className="header">
         <div className="logo">Mixle</div>
-        <div className="subhead">Mix your letters. Make your word.</div>
+        <div className="subhead">Make your best word</div>
       </div>
+
+      {showNickname && (
+        <NicknameModal
+          defaultName={defaultNickname}
+          onConfirm={handleNicknameConfirm}
+        />
+      )}
 
       {!gameOver ? (
         <>
-          <RoundIndicator currentRound={round} />
+          <RoundIndicator
+            currentRound={round}
+            totalScore={totalScore}
+            completedRounds={roundResults.length}
+          />
 
-          <div className="word-slots" ref={slotsContainerRef}>
-            {[0, 1, 2, 3, 4].map((i) => (
+          <div className="word-slots">
+            {letters.map((letter, i) => (
               <LetterSlot
-                key={i}
-                letter={letters[i] || ""}
-                index={i}
-                filled={i < letters.length}
-                current={i === step && !pickingDone}
-                validWord={isRoundDone && !!wordScore?.valid}
-                invalidWord={isRoundDone && !wordScore?.valid}
-                arrangeMode={arranging}
-                draggingSrc={dragFrom === i}
-                validPreview={
-                  arranging &&
-                  dragFrom === null &&
-                  !!arrangePreview?.valid
+                key={`${round}-${i}`}
+                letter={letter}
+                selected={selectedIndices.includes(i)}
+                selectionOrder={
+                  selectedIndices.includes(i)
+                    ? selectedIndices.indexOf(i)
+                    : undefined
                 }
-                justSwapped={swappedIndex === i}
-                showSwap={arranging && swapsLeft > 0 && dragFrom === null}
-                onPointerDown={(e) => handlePointerDown(e, i)}
-                onSwapOut={() => handleSwapOut(i)}
-                style={{
-                  transform: getSlotTransform(i),
-                  transition:
-                    dragFrom !== null
-                      ? "transform 0.2s cubic-bezier(0.2,0,0,1)"
-                      : "none",
-                }}
+                onClick={() => handleLetterTap(i)}
               />
             ))}
           </div>
 
-          {ghostPos && dragFrom !== null && (
-            <div
-              className="ghost-tile"
-              style={{ left: ghostPos.x, top: ghostPos.y }}
-            >
-              {letters[dragFrom]}
-            </div>
-          )}
-
-          {!pickingDone ? (
-            <PickPhase
-              draws={currentDraws[step]}
-              step={step}
-              onPick={handlePick}
-            />
-          ) : arranging ? (
-            <ArrangePhase
-              previewWord={previewWord}
-              arrangePreview={arrangePreview}
-              swapsLeft={swapsLeft}
-              onLockIn={handleLockIn}
+          {!showingScore ? (
+            <WordZone
+              selectedLetters={selectedLetters}
+              totalLetters={letters.length}
+              onSubmit={handleSubmit}
+              onClear={handleClear}
             />
           ) : (
-            <ScoreCard
-              wordScore={wordScore!}
-              currentWord={currentWord}
-              round={round}
-              onNextRound={handleNextRound}
-            />
+            currentRoundScore && (
+              <ScoreCard
+                wordScore={currentRoundScore}
+                currentWord={
+                  roundResults[roundResults.length - 1]?.word || ""
+                }
+                round={round}
+                totalScore={totalScore}
+                carryOverLetters={
+                  roundResults[roundResults.length - 1]
+                    ?.carryOverLetters || []
+                }
+                onNextRound={handleNextRound}
+              />
+            )
           )}
 
-          {roundResults.length > 0 && (
+          {roundResults.length > 0 && !showingScore && (
             <div className="round-scores">
               {roundResults.map((r, i) => (
                 <div key={i} className="round-score-card">
                   <div className="rd-label">Round {i + 1}</div>
-                  <div className="rd-word">{r.word}</div>
-                  {r.score.valid ? (
-                    <div className="rd-score">{r.score.total}pts</div>
-                  ) : (
-                    <div className="rd-invalid">No word</div>
-                  )}
+                  <div className="rd-word">{r.word.toUpperCase()}</div>
+                  <div className="rd-score">{r.score.total}pts</div>
                 </div>
               ))}
             </div>
@@ -397,10 +330,11 @@ export default function Game() {
       ) : (
         <GameOver
           roundResults={roundResults}
-          bestResult={bestResult}
+          totalScore={totalScore}
           dayNum={dayNum}
           shareText={generateShareText()}
           stats={stats || loadStats()}
+          gameOverReason={gameOverReason}
         />
       )}
 

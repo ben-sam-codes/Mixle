@@ -9,12 +9,12 @@ export default function HelpModal({ open, onClose }: Props) {
   if (!open) return null;
 
   const steps = [
-    "Each turn, pick one letter from 4 options. Every draw has at least one vowel.",
-    "After picking all 5 letters, <strong>drag to rearrange</strong> them into the best word you can.",
-    "<strong>Stuck?</strong> You get 1 letter swap per round — tap ↻ under any letter to replace it with a new random one.",
-    "You get <strong>3 rounds</strong> with different letter draws. Your best round is your score.",
-    "Valid words score points based on letter rarity (like Scrabble tiles). Rarer letters = more points!",
-    "Everyone gets the same draws each day. Share your score and compare!",
+    "You get <strong>9 random letters</strong> each round. Tap them in order to spell a word (3–9 letters).",
+    "Valid words score points based on <strong>letter rarity</strong> (like Scrabble tiles). Rarer letters = more points!",
+    "Use all 9 letters? <strong>+5 bonus points!</strong>",
+    "Unused letters <strong>carry over</strong> to the next round. New letters fill up to 9 again.",
+    "If you can't make any word from your letters — <strong>game over!</strong> Only the first round is guaranteed solvable.",
+    "Complete <strong>3 rounds</strong> and your total score goes on the daily leaderboard. Everyone gets the same letters!",
   ];
 
   return (
