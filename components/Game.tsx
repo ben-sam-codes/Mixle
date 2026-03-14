@@ -22,7 +22,6 @@ import { submitScore } from "@/lib/leaderboard";
 import RoundIndicator from "./RoundIndicator";
 import LetterSlot from "./LetterSlot";
 import WordZone from "./WordZone";
-import ScoreCard from "./ScoreCard";
 import GameOver from "./GameOver";
 import HelpModal from "./HelpModal";
 import NicknameModal from "./NicknameModal";
@@ -40,10 +39,11 @@ export default function Game() {
     "completed" | "no-word"
   >("completed");
   const [totalScore, setTotalScore] = useState(0);
-  const [showingScore, setShowingScore] = useState(false);
-  const [currentRoundScore, setCurrentRoundScore] = useState<ReturnType<
-    typeof scoreWord
-  > | null>(null);
+  const [scoreToast, setScoreToast] = useState<{
+    word: string;
+    total: number;
+    allUsedBonus: number;
+  } | null>(null);
 
   const [showHelp, setShowHelp] = useState(false);
   const [showNickname, setShowNickname] = useState(false);
@@ -131,7 +131,7 @@ export default function Game() {
 
   const handleLetterTap = useCallback(
     (index: number) => {
-      if (gameOver || showingScore) return;
+      if (gameOver || scoreToast) return;
       setSelectedIndices((prev) => {
         const existingPos = prev.indexOf(index);
         if (existingPos !== -1) {
@@ -142,12 +142,39 @@ export default function Game() {
         return [...prev, index];
       });
     },
-    [gameOver, showingScore]
+    [gameOver, scoreToast]
   );
 
   const handleClear = useCallback(() => {
     setSelectedIndices([]);
   }, []);
+
+  const advanceRound = useCallback(
+    (carryOver: string[], newTotal: number, currentRound: number) => {
+      if (currentRound >= 2) {
+        setGameOver(true);
+        setGameOverReason("completed");
+        setStats(updateStats(newTotal));
+        return;
+      }
+
+      const nextRound = currentRound + 1;
+      const nextLetters = generateRoundLetters(seed, nextRound, carryOver);
+
+      if (!hasAnyValidWord(nextLetters)) {
+        setGameOver(true);
+        setGameOverReason("no-word");
+        setStats(updateStats(newTotal));
+        setLetters(nextLetters);
+        setRound(nextRound);
+        return;
+      }
+
+      setRound(nextRound);
+      setLetters(nextLetters);
+    },
+    [seed]
+  );
 
   const handleSubmit = useCallback(() => {
     if (currentWord.length < 3 || !isValidWord(currentWord)) return;
@@ -155,7 +182,6 @@ export default function Game() {
     const usedAll = selectedIndices.length === letters.length;
     const score = scoreWord(currentWord, usedAll);
 
-    // Calculate carry-over letters
     const usedSet = new Set(selectedIndices);
     const carryOver = letters.filter((_, i) => !usedSet.has(i));
 
@@ -166,46 +192,24 @@ export default function Game() {
       carryOverLetters: carryOver,
     };
 
-    setCurrentRoundScore(score);
-    setShowingScore(true);
-
     const newTotal = totalScore + score.total;
     setTotalScore(newTotal);
     setRoundResults((prev) => [...prev, result]);
     setSelectedIndices([]);
-  }, [currentWord, selectedIndices, letters, selectedLetters, totalScore]);
 
-  const handleNextRound = useCallback(() => {
-    setShowingScore(false);
-    setCurrentRoundScore(null);
+    // Show score toast and auto-advance after delay
+    setScoreToast({
+      word: currentWord,
+      total: score.total,
+      allUsedBonus: score.allUsedBonus,
+    });
 
-    const lastResult = roundResults[roundResults.length - 1];
-    const carryOver = lastResult?.carryOverLetters || [];
-
-    if (round >= 2) {
-      // Game complete
-      setGameOver(true);
-      setGameOverReason("completed");
-      setStats(updateStats(totalScore));
-      return;
-    }
-
-    const nextRound = round + 1;
-    const nextLetters = generateRoundLetters(seed, nextRound, carryOver);
-
-    // Check if any valid word can be formed
-    if (!hasAnyValidWord(nextLetters)) {
-      setGameOver(true);
-      setGameOverReason("no-word");
-      setStats(updateStats(totalScore));
-      setLetters(nextLetters);
-      setRound(nextRound);
-      return;
-    }
-
-    setRound(nextRound);
-    setLetters(nextLetters);
-  }, [round, roundResults, seed, totalScore]);
+    const currentRound = round;
+    setTimeout(() => {
+      setScoreToast(null);
+      advanceRound(carryOver, newTotal, currentRound);
+    }, 1500);
+  }, [currentWord, selectedIndices, letters, selectedLetters, totalScore, round, advanceRound]);
 
   const handleNicknameConfirm = (name: string) => {
     setNickname(name);
@@ -287,32 +291,28 @@ export default function Game() {
             ))}
           </div>
 
-          {!showingScore ? (
+          {scoreToast && (
+            <div className="score-toast">
+              <span className="score-toast-word">
+                {scoreToast.word.toUpperCase()}
+              </span>
+              <span className="score-toast-pts">
+                +{scoreToast.total}pts
+                {scoreToast.allUsedBonus > 0 && " (all letters!)"}
+              </span>
+            </div>
+          )}
+
+          {!scoreToast && (
             <WordZone
               selectedLetters={selectedLetters}
               totalLetters={letters.length}
               onSubmit={handleSubmit}
               onClear={handleClear}
             />
-          ) : (
-            currentRoundScore && (
-              <ScoreCard
-                wordScore={currentRoundScore}
-                currentWord={
-                  roundResults[roundResults.length - 1]?.word || ""
-                }
-                round={round}
-                totalScore={totalScore}
-                carryOverLetters={
-                  roundResults[roundResults.length - 1]
-                    ?.carryOverLetters || []
-                }
-                onNextRound={handleNextRound}
-              />
-            )
           )}
 
-          {roundResults.length > 0 && !showingScore && (
+          {roundResults.length > 0 && !scoreToast && (
             <div className="round-scores">
               {roundResults.map((r, i) => (
                 <div key={i} className="round-score-card">
