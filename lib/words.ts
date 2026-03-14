@@ -35,6 +35,17 @@ export function hasAnyValidWord(letters: string[]): boolean {
   return false;
 }
 
+/** Get all 9-letter words from the dictionary */
+export function getNineLetterWords(): string[] {
+  if (!cachedWords) return [];
+  const result: string[] = [];
+  const wordArray = Array.from(cachedWords);
+  for (let i = 0; i < wordArray.length; i++) {
+    if (wordArray[i].length === 9) result.push(wordArray[i]);
+  }
+  return result;
+}
+
 export function getWordSet(): Set<string> | null {
   return cachedWords;
 }

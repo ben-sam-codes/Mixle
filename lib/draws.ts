@@ -1,5 +1,5 @@
 import { seededRandom } from "./rng";
-import { hasAnyValidWord } from "./words";
+import { getNineLetterWords } from "./words";
 
 export const LETTER_FREQ: Record<string, number> = {
   a: 8.2, b: 1.5, c: 2.8, d: 4.3, e: 12.7, f: 2.2, g: 2.0, h: 6.1,
@@ -64,14 +64,21 @@ export function generateRoundLetters(
   const rng = seededRandom(seed + round * 1000);
 
   if (round === 0) {
-    // Round 1: generate and validate
-    let attempts = 0;
-    while (attempts < 100) {
-      const letters = generateNineLetters(rng);
-      if (hasAnyValidWord(letters)) return letters;
-      attempts++;
+    // Round 1: pick a random 9-letter word and shuffle its letters.
+    // This guarantees everyone starts with the same solvable anagram.
+    const nineLetterWords = getNineLetterWords();
+    if (nineLetterWords.length > 0) {
+      const wordIndex = Math.floor(rng() * nineLetterWords.length);
+      const chosenWord = nineLetterWords[wordIndex];
+      const letters = chosenWord.split("");
+      // Shuffle so the word isn't immediately obvious
+      for (let i = letters.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [letters[i], letters[j]] = [letters[j], letters[i]];
+      }
+      return letters;
     }
-    // Fallback: return whatever we have (shouldn't happen with 45k words)
+    // Fallback if no 9-letter words loaded yet
     return generateNineLetters(rng);
   }
 
