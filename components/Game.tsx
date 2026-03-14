@@ -47,7 +47,6 @@ export default function Game() {
 
   const [showHelp, setShowHelp] = useState(false);
   const [showNickname, setShowNickname] = useState(false);
-  const [nickname, setNicknameState] = useState("");
   const [defaultNickname, setDefaultNickname] = useState("");
   const [wordsLoaded, setWordsLoaded] = useState(false);
   const [stats, setStats] = useState<MixleStats | null>(null);
@@ -60,17 +59,8 @@ export default function Game() {
     loadWords().then(() => setWordsLoaded(true));
   }, []);
 
-  // Check nickname on mount
-  useEffect(() => {
-    const existing = getNickname();
-    if (existing) {
-      setNicknameState(existing);
-    } else {
-      const generated = generateNickname();
-      setDefaultNickname(generated);
-      setShowNickname(true);
-    }
-  }, []);
+  // Load nickname on mount (don't prompt — wait until game ends)
+  const hasNicknameRef = useRef(!!getNickname());
 
   // Generate initial letters once words are loaded
   useEffect(() => {
@@ -121,20 +111,20 @@ export default function Game() {
     wordsLoaded,
   ]);
 
-  // Submit score to leaderboard when game ends
+  // When game ends, prompt for nickname if not set, then submit score
   useEffect(() => {
-    if (gameOver && !scoreSubmittedRef.current && nickname) {
+    if (!gameOver || scoreSubmittedRef.current) return;
+
+    const existing = getNickname();
+    if (existing) {
       scoreSubmittedRef.current = true;
       const playerId = getPlayerId();
-      submitScore(
-        playerId,
-        nickname,
-        totalScore,
-        dayNum,
-        roundResults.length
-      );
+      submitScore(playerId, existing, totalScore, dayNum, roundResults.length);
+    } else {
+      setDefaultNickname(generateNickname());
+      setShowNickname(true);
     }
-  }, [gameOver, nickname, totalScore, dayNum, roundResults.length]);
+  }, [gameOver, totalScore, dayNum, roundResults.length]);
 
   const selectedLetters = selectedIndices.map((i) => letters[i]);
   const currentWord = selectedLetters.join("");
@@ -219,8 +209,15 @@ export default function Game() {
 
   const handleNicknameConfirm = (name: string) => {
     setNickname(name);
-    setNicknameState(name);
     setShowNickname(false);
+    hasNicknameRef.current = true;
+
+    // Submit score now that we have a nickname
+    if (gameOver && !scoreSubmittedRef.current) {
+      scoreSubmittedRef.current = true;
+      const playerId = getPlayerId();
+      submitScore(playerId, name, totalScore, dayNum, roundResults.length);
+    }
   };
 
   const generateShareText = () => {

@@ -1,13 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
 
-async function dismissNicknameModal(page: Page) {
-  const modal = page.locator(".nickname-modal");
-  // Wait for it to appear (it should on first visit after clearing localStorage)
-  await modal.waitFor({ state: "visible", timeout: 10000 });
-  await modal.locator("button.next-btn").click();
-  await expect(modal).not.toBeVisible({ timeout: 5000 });
-}
-
 async function waitForGame(page: Page) {
   await expect(page.locator(".word-slots")).toBeVisible({ timeout: 10000 });
 }
@@ -19,40 +11,20 @@ test.describe("Mixle Game", () => {
     await page.reload();
   });
 
-  test("shows nickname modal on first visit", async ({ page }) => {
-    await expect(page.locator(".nickname-modal")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator(".nickname-modal h2")).toHaveText("Welcome to Mixle!");
-  });
-
-  test("can accept default nickname and start playing", async ({ page }) => {
-    await expect(page.locator(".nickname-modal")).toBeVisible({ timeout: 10000 });
-    await page.locator(".nickname-modal .next-btn").click();
-    await expect(page.locator(".nickname-modal")).not.toBeVisible();
+  test("does not show nickname modal before game is played", async ({ page }) => {
     await waitForGame(page);
-  });
-
-  test("can customize nickname", async ({ page }) => {
-    await expect(page.locator(".nickname-modal")).toBeVisible({ timeout: 10000 });
-    await page.locator(".nickname-edit-btn").click();
-    const input = page.locator(".nickname-input");
-    await expect(input).toBeVisible();
-    await input.fill("TestPlayer");
-    await page.locator(".nickname-modal .next-btn").click();
+    // Nickname modal should NOT appear on first load
     await expect(page.locator(".nickname-modal")).not.toBeVisible();
   });
 
   test("displays 9 letter tiles in round 1", async ({ page }) => {
-    await dismissNicknameModal(page);
     await waitForGame(page);
     const slots = page.locator(".slot");
     await expect(slots).toHaveCount(9);
   });
 
   test("can tap letters to form a word", async ({ page }) => {
-    await dismissNicknameModal(page);
     await waitForGame(page);
-
-    // Wait for any animation to settle
     await page.waitForTimeout(500);
 
     const slots = page.locator(".slot");
@@ -68,7 +40,6 @@ test.describe("Mixle Game", () => {
   });
 
   test("can deselect a letter by tapping again", async ({ page }) => {
-    await dismissNicknameModal(page);
     await waitForGame(page);
     await page.waitForTimeout(500);
 
@@ -81,7 +52,6 @@ test.describe("Mixle Game", () => {
   });
 
   test("clear button removes all selections", async ({ page }) => {
-    await dismissNicknameModal(page);
     await waitForGame(page);
     await page.waitForTimeout(500);
 
@@ -95,7 +65,6 @@ test.describe("Mixle Game", () => {
   });
 
   test("submit button is disabled for invalid words", async ({ page }) => {
-    await dismissNicknameModal(page);
     await waitForGame(page);
 
     const submitBtn = page.locator(".submit-btn");
@@ -103,7 +72,6 @@ test.describe("Mixle Game", () => {
   });
 
   test("shows how to play modal", async ({ page }) => {
-    await dismissNicknameModal(page);
     await waitForGame(page);
     await page.waitForTimeout(500);
 
@@ -114,7 +82,50 @@ test.describe("Mixle Game", () => {
   });
 
   test("round indicator shows correct round", async ({ page }) => {
-    await dismissNicknameModal(page);
+    await waitForGame(page);
     await expect(page.locator(".round-label")).toContainText("Round 1 of 3");
+  });
+
+  test("game state persists on page reload", async ({ page }) => {
+    await waitForGame(page);
+
+    // Select a letter
+    const slots = page.locator(".slot");
+    await page.waitForTimeout(500);
+    await slots.nth(0).click();
+    await expect(page.locator(".slot.selected")).toHaveCount(1);
+
+    // Reload
+    await page.reload();
+
+    // Game should still show 9 letters (state restored)
+    await waitForGame(page);
+    await expect(page.locator(".slot")).toHaveCount(9);
+  });
+
+  test("all players get the same letters on the same day", async ({ page }) => {
+    await waitForGame(page);
+
+    // Get all 9 letters
+    const letters1: string[] = [];
+    const slots = page.locator(".slot");
+    for (let i = 0; i < 9; i++) {
+      const text = await slots.nth(i).textContent();
+      letters1.push(text?.trim() || "");
+    }
+
+    // Clear state and reload — should get the same letters
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await waitForGame(page);
+
+    const letters2: string[] = [];
+    const slots2 = page.locator(".slot");
+    for (let i = 0; i < 9; i++) {
+      const text = await slots2.nth(i).textContent();
+      letters2.push(text?.trim() || "");
+    }
+
+    expect(letters1).toEqual(letters2);
   });
 });

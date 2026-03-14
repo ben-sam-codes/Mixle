@@ -21,8 +21,8 @@ export default function NicknameModal({ defaultName, onConfirm }: Props) {
   return (
     <div className="modal-overlay">
       <div className="modal nickname-modal">
-        <h2>Welcome to Mixle!</h2>
-        <p>Your name on the leaderboard:</p>
+        <h2>Nice game!</h2>
+        <p>Choose a name for the leaderboard:</p>
 
         <div className="nickname-display">
           {editing ? (
@@ -51,7 +51,7 @@ export default function NicknameModal({ defaultName, onConfirm }: Props) {
         )}
 
         <button className="next-btn" onClick={handleSubmit} style={{ marginTop: 16 }}>
-          Play as {name.trim() || defaultName}
+          Submit as {name.trim() || defaultName}
         </button>
       </div>
     </div>
