@@ -69,11 +69,11 @@ export default function Game() {
     clearOldStates();
 
     const saved = loadGameState();
-    if (saved) {
+    if (saved && Array.isArray(saved.letters) && saved.letters.length > 0) {
       setRound(saved.round);
       setLetters(saved.letters);
-      setSelectedIndices(saved.selectedIndices);
-      setRoundResults(saved.roundResults);
+      setSelectedIndices(saved.selectedIndices || []);
+      setRoundResults(saved.roundResults || []);
       setGameOver(saved.gameOver);
       setGameOverReason(saved.gameOverReason || "completed");
       setTotalScore(saved.totalScore);
