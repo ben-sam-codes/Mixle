@@ -16,6 +16,7 @@ const outfit = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.mixle.fun"),
   title: "Mixle — Daily Word Game",
   description:
     "Get 9 letters, make your best word. Unused letters carry over. 3 rounds, daily leaderboard!",
@@ -24,6 +25,10 @@ export const metadata: Metadata = {
     description:
       "Get 9 letters, make your best word. Unused letters carry over. 3 rounds, daily leaderboard!",
     type: "website",
+    url: "https://www.mixle.fun",
+  },
+  twitter: {
+    card: "summary_large_image",
   },
 };
 
