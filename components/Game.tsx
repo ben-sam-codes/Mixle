@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { track } from "@vercel/analytics";
 import { getDailySeed, getDayNumber } from "@/lib/rng";
 import { generateRoundLetters } from "@/lib/draws";
 import { scoreWord } from "@/lib/scoring";
@@ -66,6 +67,7 @@ export default function Game() {
       if (saved.gameOver) {
         setStats(updateStats(saved.totalScore));
       }
+      track("repeat_visit", { gameOver: saved.gameOver });
       return;
     }
 
@@ -126,6 +128,7 @@ export default function Game() {
         setGameOver(true);
         setGameOverReason("completed");
         setStats(updateStats(newTotal));
+        track("game_completed", { reason: "completed", score: newTotal, rounds: currentRound + 1 });
         return;
       }
 
@@ -136,6 +139,7 @@ export default function Game() {
         setGameOver(true);
         setGameOverReason("no-word");
         setStats(updateStats(newTotal));
+        track("game_completed", { reason: "no-word", score: newTotal, rounds: nextRound });
         setLetters(nextLetters);
         setRound(nextRound);
         return;
