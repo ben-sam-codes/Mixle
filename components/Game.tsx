@@ -12,17 +12,11 @@ import {
   type RoundResult,
 } from "@/lib/storage";
 import { loadStats, updateStats, type MixleStats } from "@/lib/stats";
-import {
-  getNickname,
-  setNickname,
-  generateNickname,
-} from "@/lib/nickname";
 import RoundIndicator from "./RoundIndicator";
 import LetterSlot from "./LetterSlot";
 import WordZone from "./WordZone";
 import GameOver from "./GameOver";
 import HelpModal from "./HelpModal";
-import NicknameModal from "./NicknameModal";
 
 export default function Game() {
   const seed = getDailySeed();
@@ -44,21 +38,15 @@ export default function Game() {
   } | null>(null);
 
   const [showHelp, setShowHelp] = useState(false);
-  const [showNickname, setShowNickname] = useState(false);
-  const [defaultNickname, setDefaultNickname] = useState("");
   const [wordsLoaded, setWordsLoaded] = useState(false);
   const [stats, setStats] = useState<MixleStats | null>(null);
 
   const restoredRef = useRef(false);
-  const scoreSubmittedRef = useRef(false);
 
   // Load words on mount
   useEffect(() => {
     loadWords().then(() => setWordsLoaded(true));
   }, []);
-
-  // Load nickname on mount (don't prompt — wait until game ends)
-  const hasNicknameRef = useRef(!!getNickname());
 
   // Generate initial letters once words are loaded
   useEffect(() => {
@@ -108,19 +96,6 @@ export default function Game() {
     totalScore,
     wordsLoaded,
   ]);
-
-  // When game ends, prompt for nickname if not set
-  useEffect(() => {
-    if (!gameOver || scoreSubmittedRef.current) return;
-
-    const existing = getNickname();
-    if (existing) {
-      scoreSubmittedRef.current = true;
-    } else {
-      setDefaultNickname(generateNickname());
-      setShowNickname(true);
-    }
-  }, [gameOver]);
 
   const selectedLetters = selectedIndices.map((i) => letters[i]);
   const currentWord = selectedLetters.join("");
@@ -207,13 +182,6 @@ export default function Game() {
     }, 1000);
   }, [currentWord, selectedIndices, letters, selectedLetters, totalScore, round, advanceRound]);
 
-  const handleNicknameConfirm = (name: string) => {
-    setNickname(name);
-    setShowNickname(false);
-    hasNicknameRef.current = true;
-    scoreSubmittedRef.current = true;
-  };
-
   const generateShareText = () => {
     const lines = [`Mixle ${dayNum} \u2022 ${totalScore}pts`];
     roundResults.forEach((r) => {
@@ -250,13 +218,6 @@ export default function Game() {
         <div className="logo">Mixle</div>
         <div className="subhead">Make your best word</div>
       </div>
-
-      {showNickname && (
-        <NicknameModal
-          defaultName={defaultNickname}
-          onConfirm={handleNicknameConfirm}
-        />
-      )}
 
       {!gameOver ? (
         <>
