@@ -4,70 +4,33 @@ import React from "react";
 
 interface Props {
   letter: string;
-  index: number;
-  filled: boolean;
-  current: boolean;
-  validWord: boolean;
-  invalidWord: boolean;
-  arrangeMode: boolean;
-  draggingSrc: boolean;
-  validPreview: boolean;
-  justSwapped: boolean;
-  showSwap: boolean;
-  onPointerDown: (e: React.PointerEvent) => void;
-  onSwapOut: () => void;
-  style?: React.CSSProperties;
+  selected: boolean;
+  selectionOrder?: number;
+  onClick: () => void;
 }
 
 export default function LetterSlot({
   letter,
-  filled,
-  current,
-  validWord,
-  invalidWord,
-  arrangeMode,
-  draggingSrc,
-  validPreview,
-  justSwapped,
-  showSwap,
-  onPointerDown,
-  onSwapOut,
-  style,
+  selected,
+  selectionOrder,
+  onClick,
 }: Props) {
   const classes = [
     "slot",
-    filled && "filled",
-    current && "current",
-    validWord && "valid-word",
-    invalidWord && "invalid-word",
-    arrangeMode && "arrange-mode",
-    draggingSrc && "dragging-src",
-    validPreview && "valid-preview",
-    justSwapped && "just-swapped",
+    "filled",
+    selected && "selected",
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <div className="slot-column" style={style}>
-      <div
-        className={classes}
-        onPointerDown={onPointerDown}
-        style={arrangeMode ? { touchAction: "none" } : {}}
-      >
-        {letter || ""}
+    <div className="slot-column">
+      <div className={classes} onClick={onClick}>
+        {letter.toUpperCase()}
+        {selected && selectionOrder !== undefined && (
+          <span className="selection-order">{selectionOrder + 1}</span>
+        )}
       </div>
-      {showSwap && (
-        <button
-          className="swap-out-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSwapOut();
-          }}
-        >
-          ↻
-        </button>
-      )}
     </div>
   );
 }

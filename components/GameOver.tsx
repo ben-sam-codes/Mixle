@@ -1,59 +1,87 @@
 "use client";
 
+import { useState } from "react";
 import type { RoundResult } from "@/lib/storage";
 import type { MixleStats } from "@/lib/stats";
-import ShareButton from "./ShareButton";
-import StatsDisplay from "./StatsDisplay";
+import Leaderboard from "./Leaderboard";
 
 interface Props {
   roundResults: RoundResult[];
-  bestResult: RoundResult | null;
+  totalScore: number;
   dayNum: number;
   shareText: string;
   stats: MixleStats;
+  gameOverReason: "completed" | "no-word";
 }
 
 export default function GameOver({
   roundResults,
-  bestResult,
+  totalScore,
   dayNum,
   shareText,
   stats,
+  gameOverReason,
 }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
   return (
     <>
       <div className="result-title">
-        {bestResult?.score?.valid ? "Nice Build!" : "Tough Letters!"}
+        {gameOverReason === "no-word" ? "No Words Left!" : "Well Played!"}
       </div>
       <div className="result-sub">MIXLE #{dayNum}</div>
-      <StatsDisplay stats={stats} />
-      <div className="round-scores">
-        {roundResults.map((r, i) => {
-          const isBest =
-            bestResult &&
-            r.word === bestResult.word &&
-            r.score.total === bestResult.score.total;
-          return (
-            <div
-              key={i}
-              className={`round-score-card ${isBest ? "best" : ""}`}
-            >
-              <div className="rd-label">Round {i + 1}</div>
-              <div className="rd-word">
-                {r.word.toUpperCase()}
-                {r.usedSwap ? " 🔄" : ""}
-              </div>
-              {r.score.valid ? (
-                <div className="rd-score">{r.score.total}pts</div>
-              ) : (
-                <div className="rd-invalid">No word</div>
-              )}
-            </div>
-          );
-        })}
+
+      <div className="final-score-display">
+        <div className="final-score-label">Total Score</div>
+        <div className="final-score-value">{totalScore}</div>
       </div>
+
+      <div className="stats-display">
+        {[
+          { label: "Played", value: stats.gamesPlayed },
+          { label: "Best", value: stats.highScore },
+          { label: "Streak", value: stats.currentStreak },
+          { label: "Max Streak", value: stats.maxStreak },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className={`stat-box ${
+              item.label === "Streak" && stats.currentStreak > 0
+                ? "streak-active"
+                : ""
+            }`}
+          >
+            <div className="stat-label">{item.label}</div>
+            <div className="stat-value">{item.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="round-scores">
+        {roundResults.map((r, i) => (
+          <div key={i} className="round-score-card">
+            <div className="rd-label">Round {i + 1}</div>
+            <div className="rd-word">{r.word.toUpperCase()}</div>
+            <div className="rd-score">{r.score.total}pts</div>
+          </div>
+        ))}
+      </div>
+
+      <Leaderboard dayNumber={dayNum} />
+
       <div className="share-preview">{shareText}</div>
-      <ShareButton shareText={shareText} />
+      <button className="share-btn" onClick={handleShare}>
+        Copy Results to Share
+      </button>
+      {copied && <div className="copied-toast">Copied to clipboard!</div>}
     </>
   );
 }

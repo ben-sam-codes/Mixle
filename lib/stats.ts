@@ -37,14 +37,14 @@ export function loadStats(): MixleStats {
   };
 }
 
-export function updateStats(bestScore: number): MixleStats {
+export function updateStats(totalScore: number): MixleStats {
   const stats = loadStats();
   const today = getTodayDate();
 
   if (stats.lastPlayedDate === today) return stats;
 
   stats.gamesPlayed++;
-  if (bestScore > stats.highScore) stats.highScore = bestScore;
+  if (totalScore > stats.highScore) stats.highScore = totalScore;
 
   if (stats.lastPlayedDate && isYesterday(stats.lastPlayedDate)) {
     stats.currentStreak++;

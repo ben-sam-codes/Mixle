@@ -3,17 +3,18 @@ import type { Score } from "./scoring";
 export interface RoundResult {
   word: string;
   score: Score;
-  usedSwap: boolean;
+  lettersUsed: string[];
+  carryOverLetters: string[];
 }
 
 export interface GameState {
   round: number;
-  step: number;
   letters: string[];
+  selectedIndices: number[];
   roundResults: RoundResult[];
   gameOver: boolean;
-  swapsUsed: boolean;
-  arranging: boolean;
+  gameOverReason?: "no-word" | "completed";
+  totalScore: number;
 }
 
 function getTodayKey(): string {
@@ -45,7 +46,14 @@ export function clearOldStates(): void {
     const todayKey = getTodayKey();
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (key && key.startsWith("mixle-") && key !== todayKey && key !== "mixle-stats") {
+      if (
+        key &&
+        key.startsWith("mixle-") &&
+        key !== todayKey &&
+        key !== "mixle-stats" &&
+        key !== "mixle-nickname" &&
+        key !== "mixle-player-id"
+      ) {
         localStorage.removeItem(key);
       }
     }
