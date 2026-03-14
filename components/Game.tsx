@@ -225,20 +225,21 @@ export default function Game() {
   };
 
   const generateShareText = () => {
-    const lines = [`MIXLE #${dayNum}`];
-    roundResults.forEach((r, i) => {
-      const usedAll = r.score.allUsedBonus > 0;
+    const lines = [`Mixle ${dayNum} \u2022 ${totalScore}pts`];
+    roundResults.forEach((r) => {
+      const used = r.lettersUsed.length;
+      const unused = 9 - used;
+      const dots = "\uD83D\uDFE2".repeat(used) + "\u26AA\uFE0F".repeat(unused);
+      const allUsed = r.score.allUsedBonus > 0;
       lines.push(
-        `R${i + 1}: ${r.word.toUpperCase()} ${r.score.total}pts${
-          usedAll ? " ⭐" : ""
-        }`
+        `${dots} +${r.score.total}pts${allUsed ? " \u2B50\uFE0F" : ""}`
       );
     });
     if (gameOverReason === "no-word") {
-      lines.push(`Game Over! (${roundResults.length}/3 rounds)`);
+      lines.push("\u274C Game over!");
     }
-    lines.push(`Total: ${totalScore}pts`);
-    lines.push("mixle.fun");
+    lines.push("");
+    lines.push("www.mixle.fun");
     return lines.join("\n");
   };
 
