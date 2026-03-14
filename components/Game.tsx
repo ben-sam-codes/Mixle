@@ -67,7 +67,6 @@ export default function Game() {
       if (saved.gameOver) {
         setStats(updateStats(saved.totalScore));
       }
-      track("repeat_visit", { gameOver: saved.gameOver });
       return;
     }
 
