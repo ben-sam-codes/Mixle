@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const spaceMono = localFont({
@@ -41,6 +42,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${spaceMono.variable} ${outfit.variable}`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
