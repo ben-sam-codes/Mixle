@@ -67,11 +67,13 @@ body {
   margin-bottom: 16px; letter-spacing: 1px; text-transform: uppercase;
 }
 
-/* Letter tiles - 9 across */
+/* Letter tiles - 5 top, 4 bottom */
 .word-slots {
-  display: flex; justify-content: center; gap: 4px;
+  display: flex; justify-content: center; gap: 6px;
   margin-bottom: 20px; position: relative;
   flex-wrap: wrap;
+  max-width: 340px;
+  margin-left: auto; margin-right: auto;
 }
 
 .slot-column {
@@ -79,13 +81,12 @@ body {
 }
 
 .slot {
-  width: calc((100vw - 80px) / 9);
-  max-width: 46px;
-  aspect-ratio: 0.85;
-  border: 2px solid var(--surface); border-radius: 8px;
+  width: 56px;
+  height: 62px;
+  border: 2px solid var(--surface); border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-space-mono), 'Space Mono', monospace;
-  font-size: 1.2rem; font-weight: 700; text-transform: uppercase;
+  font-size: 1.5rem; font-weight: 700; text-transform: uppercase;
   background: var(--bg2); transition: all 0.2s;
   position: relative; user-select: none; -webkit-user-select: none;
   cursor: pointer;

@@ -208,7 +208,7 @@ export default function Game() {
     setTimeout(() => {
       setScoreToast(null);
       advanceRound(carryOver, newTotal, currentRound);
-    }, 1500);
+    }, 1000);
   }, [currentWord, selectedIndices, letters, selectedLetters, totalScore, round, advanceRound]);
 
   const handleNicknameConfirm = (name: string) => {
