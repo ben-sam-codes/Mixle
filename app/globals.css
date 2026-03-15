@@ -333,6 +333,12 @@ body {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+.bmc-link {
+  display: block; text-align: center; margin-top: 16px;
+  color: var(--text-dim); font-size: 0.8rem; text-decoration: none;
+  transition: color 0.2s;
+}
+.bmc-link:hover { color: var(--accent2); }
 
 /* Stats display */
 .stats-display {
