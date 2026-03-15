@@ -89,6 +89,14 @@ export default function GameOver({
         {canNativeShare ? "Share Results" : "Copy Results to Share"}
       </button>
       {copied && <div className="copied-toast">Copied to clipboard!</div>}
+      <a
+        href="https://buymeacoffee.com/papernapkinprojects?new=1"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bmc-link"
+      >
+        ☕ Buy me a coffee
+      </a>
     </>
   );
 }
