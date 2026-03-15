@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { LETTER_VALUES } from "../lib/scoring";
 
 interface Props {
   letter: string;
@@ -55,6 +56,7 @@ export default function LetterSlot({
     >
       <div className={classes} onClick={onClick}>
         {letter.toUpperCase()}
+        <span className="point-value">{LETTER_VALUES[letter.toLowerCase()] || 0}</span>
         {selected && selectionOrder !== undefined && (
           <span className="selection-order">{selectionOrder + 1}</span>
         )}
