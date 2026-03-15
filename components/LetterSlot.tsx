@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 
 interface Props {
   letter: string;
   selected: boolean;
   selectionOrder?: number;
   onClick: () => void;
+  layoutId?: string;
+  isShuffling?: boolean;
 }
 
 export default function LetterSlot({
@@ -14,6 +17,8 @@ export default function LetterSlot({
   selected,
   selectionOrder,
   onClick,
+  layoutId,
+  isShuffling,
 }: Props) {
   const classes = [
     "slot",
@@ -24,13 +29,36 @@ export default function LetterSlot({
     .join(" ");
 
   return (
-    <div className="slot-column">
+    <motion.div
+      className="slot-column"
+      layoutId={layoutId}
+      layout
+      animate={{
+        scale: isShuffling ? 1.15 : 1,
+        y: isShuffling ? -8 : 0,
+      }}
+      transition={{
+        layout: {
+          type: "spring",
+          stiffness: 200,
+          damping: 22,
+        },
+        scale: { duration: 0.2 },
+        y: { duration: 0.2 },
+      }}
+      style={{
+        zIndex: isShuffling ? 10 : 0,
+        filter: isShuffling
+          ? "drop-shadow(0 8px 16px rgba(233, 69, 96, 0.4))"
+          : "none",
+      }}
+    >
       <div className={classes} onClick={onClick}>
         {letter.toUpperCase()}
         {selected && selectionOrder !== undefined && (
           <span className="selection-order">{selectionOrder + 1}</span>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
