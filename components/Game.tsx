@@ -43,6 +43,22 @@ export default function Game() {
   const [stats, setStats] = useState<MixleStats | null>(null);
 
   const restoredRef = useRef(false);
+  const seedRef = useRef(seed);
+
+  // Reload page when the day changes (e.g. tab left open overnight)
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        const currentSeed = getDailySeed();
+        if (currentSeed !== seedRef.current) {
+          window.location.reload();
+        }
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   // Load words on mount
   useEffect(() => {
