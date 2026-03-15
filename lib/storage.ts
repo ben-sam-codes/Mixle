@@ -8,6 +8,7 @@ export interface RoundResult {
 }
 
 export interface GameState {
+  seed: number;
   round: number;
   letters: string[];
   selectedIndices: number[];
@@ -31,11 +32,13 @@ export function saveGameState(state: GameState): void {
   } catch {}
 }
 
-export function loadGameState(): GameState | null {
+export function loadGameState(seed: number): GameState | null {
   try {
     const raw = localStorage.getItem(getTodayKey());
     if (!raw) return null;
-    return JSON.parse(raw) as GameState;
+    const state = JSON.parse(raw) as GameState;
+    if (state.seed !== seed) return null;
+    return state;
   } catch {
     return null;
   }

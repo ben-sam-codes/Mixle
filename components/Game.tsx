@@ -67,7 +67,7 @@ export default function Game() {
     restoredRef.current = true;
     clearOldStates();
 
-    const saved = loadGameState();
+    const saved = loadGameState(seed);
     if (saved && Array.isArray(saved.letters) && saved.letters.length > 0) {
       setRound(saved.round);
       setLetters(saved.letters);
@@ -93,6 +93,7 @@ export default function Game() {
   useEffect(() => {
     if (!wordsLoaded || !restoredRef.current) return;
     saveGameState({
+      seed,
       round,
       letters,
       selectedIndices,
