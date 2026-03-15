@@ -43,22 +43,6 @@ export default function Game() {
   const [stats, setStats] = useState<MixleStats | null>(null);
 
   const restoredRef = useRef(false);
-  const seedRef = useRef(seed);
-
-  // Reload page when the day changes (e.g. tab left open overnight)
-  useEffect(() => {
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        const currentSeed = getDailySeed();
-        if (currentSeed !== seedRef.current) {
-          window.location.reload();
-        }
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
 
   // Load words on mount
   useEffect(() => {
@@ -71,7 +55,7 @@ export default function Game() {
     restoredRef.current = true;
     clearOldStates();
 
-    const saved = loadGameState();
+    const saved = loadGameState(seed);
     if (saved && Array.isArray(saved.letters) && saved.letters.length > 0) {
       setRound(saved.round);
       setLetters(saved.letters);
@@ -95,6 +79,7 @@ export default function Game() {
   useEffect(() => {
     if (!wordsLoaded || !restoredRef.current) return;
     saveGameState({
+      seed,
       round,
       letters,
       selectedIndices,
