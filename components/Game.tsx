@@ -14,6 +14,7 @@ import {
 } from "@/lib/storage";
 import { loadStats, updateStats, type MixleStats } from "@/lib/stats";
 import RoundIndicator from "./RoundIndicator";
+import { LayoutGroup } from "framer-motion";
 import LetterSlot from "./LetterSlot";
 import WordZone from "./WordZone";
 import GameOver from "./GameOver";
@@ -41,8 +42,19 @@ export default function Game() {
   const [showHelp, setShowHelp] = useState(false);
   const [wordsLoaded, setWordsLoaded] = useState(false);
   const [stats, setStats] = useState<MixleStats | null>(null);
+  const [letterKeys, setLetterKeys] = useState<string[]>([]);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const keyCounterRef = useRef(0);
 
   const restoredRef = useRef(false);
+
+  const generateKeys = useCallback((count: number) => {
+    const keys: string[] = [];
+    for (let i = 0; i < count; i++) {
+      keys.push(`k-${keyCounterRef.current++}`);
+    }
+    return keys;
+  }, []);
 
   // Load words on mount
   useEffect(() => {
@@ -59,6 +71,7 @@ export default function Game() {
     if (saved && Array.isArray(saved.letters) && saved.letters.length > 0) {
       setRound(saved.round);
       setLetters(saved.letters);
+      setLetterKeys(generateKeys(saved.letters.length));
       setSelectedIndices(saved.selectedIndices || []);
       setRoundResults(saved.roundResults || []);
       setGameOver(saved.gameOver);
@@ -73,7 +86,8 @@ export default function Game() {
     // Fresh game: generate round 1 letters
     const firstLetters = generateRoundLetters(seed, 0, []);
     setLetters(firstLetters);
-  }, [wordsLoaded, seed]);
+    setLetterKeys(generateKeys(firstLetters.length));
+  }, [wordsLoaded, seed, generateKeys]);
 
   // Save state on changes
   useEffect(() => {
@@ -121,6 +135,42 @@ export default function Game() {
     setSelectedIndices([]);
   }, []);
 
+  const handleShuffle = useCallback(() => {
+    if (gameOver || scoreToast || isShuffling) return;
+
+    setIsShuffling(true);
+
+    // After a brief "lift" delay, perform the shuffle
+    setTimeout(() => {
+      // Fisher-Yates shuffle
+      const indices = letters.map((_, i) => i);
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+
+      // Remap letters and keys
+      const newLetters = indices.map((i) => letters[i]);
+      const newKeys = indices.map((i) => letterKeys[i]);
+
+      // Remap selectedIndices to follow their letters
+      const oldToNew = new Map<number, number>();
+      indices.forEach((oldIdx, newIdx) => oldToNew.set(oldIdx, newIdx));
+      const newSelectedIndices = selectedIndices.map(
+        (old) => oldToNew.get(old)!
+      );
+
+      setLetters(newLetters);
+      setLetterKeys(newKeys);
+      setSelectedIndices(newSelectedIndices);
+
+      // Let tiles "land" after layout animation
+      setTimeout(() => {
+        setIsShuffling(false);
+      }, 350);
+    }, 200);
+  }, [gameOver, scoreToast, isShuffling, letters, letterKeys, selectedIndices]);
+
   const advanceRound = useCallback(
     (carryOver: string[], newTotal: number, currentRound: number) => {
       if (currentRound >= 2) {
@@ -140,14 +190,16 @@ export default function Game() {
         setStats(updateStats(newTotal));
         track("game_completed", { reason: "no-word", score: newTotal, rounds: nextRound });
         setLetters(nextLetters);
+        setLetterKeys(generateKeys(nextLetters.length));
         setRound(nextRound);
         return;
       }
 
       setRound(nextRound);
       setLetters(nextLetters);
+      setLetterKeys(generateKeys(nextLetters.length));
     },
-    [seed]
+    [seed, generateKeys]
   );
 
   const handleSubmit = useCallback(() => {
@@ -230,20 +282,34 @@ export default function Game() {
             completedRounds={roundResults.length}
           />
 
-          <div className="word-slots">
-            {letters.map((letter, i) => (
-              <LetterSlot
-                key={`${round}-${i}`}
-                letter={letter}
-                selected={selectedIndices.includes(i)}
-                selectionOrder={
-                  selectedIndices.includes(i)
-                    ? selectedIndices.indexOf(i)
-                    : undefined
-                }
-                onClick={() => handleLetterTap(i)}
-              />
-            ))}
+          <LayoutGroup>
+            <div className="word-slots">
+              {letters.map((letter, i) => (
+                <LetterSlot
+                  key={letterKeys[i] || `${round}-${i}`}
+                  layoutId={letterKeys[i] || `${round}-${i}`}
+                  letter={letter}
+                  selected={selectedIndices.includes(i)}
+                  selectionOrder={
+                    selectedIndices.includes(i)
+                      ? selectedIndices.indexOf(i)
+                      : undefined
+                  }
+                  onClick={() => handleLetterTap(i)}
+                  isShuffling={isShuffling}
+                />
+              ))}
+            </div>
+          </LayoutGroup>
+
+          <div className="shuffle-row">
+            <button
+              className="shuffle-btn"
+              onClick={handleShuffle}
+              disabled={isShuffling || !!scoreToast}
+            >
+              &#8645; Shuffle
+            </button>
           </div>
 
           {scoreToast && (
