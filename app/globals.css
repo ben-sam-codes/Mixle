@@ -104,6 +104,17 @@ body {
   transform: translateY(-3px);
 }
 
+.point-value {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.55rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .selection-order {
   position: absolute;
   top: -6px; right: -6px;
