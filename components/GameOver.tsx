@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { track } from "@vercel/analytics";
 import type { RoundResult } from "@/lib/storage";
 import type { MixleStats } from "@/lib/stats";
@@ -22,13 +22,22 @@ export default function GameOver({
   gameOverReason,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
+
+  useEffect(() => {
+    setCanNativeShare(!!navigator.share);
+  }, []);
 
   const handleShare = async () => {
     try {
-      await navigator.clipboard.writeText(shareText);
-      setCopied(true);
+      if (navigator.share) {
+        await navigator.share({ text: shareText });
+      } else {
+        await navigator.clipboard.writeText(shareText);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
       track("share", { score: totalScore, dayNum });
-      setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
 
@@ -77,7 +86,7 @@ export default function GameOver({
 
       <div className="share-preview">{shareText}</div>
       <button className="share-btn" onClick={handleShare}>
-        Copy Results to Share
+        {canNativeShare ? "Share Results" : "Copy Results to Share"}
       </button>
       {copied && <div className="copied-toast">Copied to clipboard!</div>}
     </>
