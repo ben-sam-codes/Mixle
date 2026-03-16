@@ -361,6 +361,9 @@ export default function Game() {
         <button className="how-btn" onClick={() => setShowHelp(true)}>
           How to Play
         </button>
+        <a href="/about" className="how-btn about-link">
+          About Mixle
+        </a>
       </div>
 
       <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
