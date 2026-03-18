@@ -30,7 +30,7 @@ export default function WordZone({
             {word.toUpperCase()}
           </span>
         ) : (
-          <span className="word-placeholder">Tap letters to spell</span>
+          <span className="word-placeholder">Tap or type letters to spell</span>
         )}
       </div>
 

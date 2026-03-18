@@ -145,6 +145,41 @@ export default function Game() {
     setSelectedIndices([]);
   }, []);
 
+  // Desktop keyboard input: type letters, Backspace to undo, Enter to submit
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (gameOver || scoreToast) return;
+
+      const key = e.key.toLowerCase();
+
+      if (key === "enter") {
+        e.preventDefault();
+        handleSubmit();
+        return;
+      }
+
+      if (key === "backspace") {
+        e.preventDefault();
+        setSelectedIndices((prev) => prev.slice(0, -1));
+        return;
+      }
+
+      if (/^[a-z]$/.test(key)) {
+        setSelectedIndices((prev) => {
+          const usedSet = new Set(prev);
+          const idx = letters.findIndex(
+            (l, i) => l.toLowerCase() === key && !usedSet.has(i)
+          );
+          if (idx === -1) return prev;
+          return [...prev, idx];
+        });
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [gameOver, scoreToast, letters, handleSubmit]);
+
   const handleShuffle = useCallback(() => {
     if (gameOver || scoreToast || isShuffling) return;
 
