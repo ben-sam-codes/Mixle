@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { track } from "@vercel/analytics";
 import type { RoundResult } from "@/lib/storage";
 import type { MixleStats } from "@/lib/stats";
+import type { BestWordResult } from "@/lib/bestWord";
 interface Props {
   roundResults: RoundResult[];
+  bestWords: (BestWordResult | null)[];
   totalScore: number;
   dayNum: number;
   shareText: string;
@@ -15,6 +17,7 @@ interface Props {
 
 export default function GameOver({
   roundResults,
+  bestWords,
   totalScore,
   dayNum,
   shareText,
@@ -75,16 +78,39 @@ export default function GameOver({
       </div>
 
       <div className="round-scores">
-        {roundResults.map((r, i) => (
-          <div key={i} className="round-score-card">
-            <div className="rd-label">Round {i + 1}</div>
-            <div className="rd-word">{r.word.toUpperCase()}</div>
-            <div className="rd-score">{r.score.total}pts</div>
-          </div>
-        ))}
+        {roundResults.map((r, i) => {
+          const best = bestWords[i];
+          const playerFoundBest =
+            best && r.word.toLowerCase() === best.word.toLowerCase();
+
+          return (
+            <div key={i} className="round-score-card">
+              <div className="rd-label">Round {i + 1}</div>
+              <div className="rd-word">{r.word.toUpperCase()}</div>
+              <div className="rd-score">{r.score.total}pts</div>
+              {best && (
+                <div className="rd-best">
+                  {playerFoundBest ? (
+                    <span className="rd-best-match">Best!</span>
+                  ) : (
+                    <>
+                      <span className="rd-best-label">Best: </span>
+                      <span className="rd-best-word">
+                        {best.word.toUpperCase()}
+                      </span>
+                      <span className="rd-best-score">
+                        {" "}
+                        {best.score.total}pts
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      <div className="share-preview">{shareText}</div>
       <button className="share-btn" onClick={handleShare}>
         {canNativeShare ? "Share Results" : "Copy Results to Share"}
       </button>
