@@ -447,4 +447,93 @@ test.describe("Mixle Game", () => {
     await expect(orders.nth(1)).toHaveText("2");
     await expect(orders.nth(2)).toHaveText("3");
   });
+
+  test("game over screen shows best word for each round", async ({ page }) => {
+    await waitForGame(page);
+
+    let roundsPlayed = 0;
+    for (let round = 0; round < 3; round++) {
+      if (await page.locator(".result-title").isVisible().catch(() => false))
+        break;
+
+      const letters = await getLetters(page);
+      const indices = findValidWordIndices(letters);
+      if (indices.length === 0) break;
+
+      await selectAndSubmit(page, indices);
+      roundsPlayed++;
+      await page.waitForTimeout(1500);
+    }
+
+    await expect(page.locator(".result-title")).toBeVisible();
+
+    // Each completed round card should have a best word indicator
+    const roundCards = page.locator(".round-score-card");
+    const cardCount = await roundCards.count();
+    expect(cardCount).toBeGreaterThan(0);
+    expect(cardCount).toBeLessThanOrEqual(roundsPlayed);
+
+    for (let i = 0; i < cardCount; i++) {
+      const card = roundCards.nth(i);
+      const bestEl = card.locator(".rd-best");
+      await expect(bestEl).toBeVisible();
+
+      // Should show either "Best!" or a word with score
+      const isBestMatch = await card.locator(".rd-best-match").isVisible().catch(() => false);
+      const hasBestWord = await card.locator(".rd-best-word").isVisible().catch(() => false);
+
+      expect(isBestMatch || hasBestWord).toBe(true);
+      if (hasBestWord) {
+        await expect(card.locator(".rd-best-score")).toContainText("pts");
+      }
+    }
+  });
+
+  test("share text does not contain best word", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await waitForGame(page);
+
+    for (let round = 0; round < 3; round++) {
+      if (await page.locator(".result-title").isVisible().catch(() => false))
+        break;
+
+      const letters = await getLetters(page);
+      const indices = findValidWordIndices(letters);
+      if (indices.length === 0) break;
+
+      await selectAndSubmit(page, indices);
+      await page.waitForTimeout(1500);
+    }
+
+    await expect(page.locator(".result-title")).toBeVisible();
+
+    // Collect any best words shown (only the ones the player didn't find)
+    const bestWordEls = page.locator(".rd-best-word");
+    const bestWordCount = await bestWordEls.count();
+    const bestWords: string[] = [];
+    for (let i = 0; i < bestWordCount; i++) {
+      const text = await bestWordEls.nth(i).textContent();
+      if (text) bestWords.push(text.trim().toLowerCase());
+    }
+
+    // Share results
+    await page.locator(".share-btn").dispatchEvent("click");
+    await expect(page.locator(".copied-toast")).toContainText(
+      "Copied to clipboard!"
+    );
+
+    const clipboardText = await page.evaluate(() =>
+      navigator.clipboard.readText()
+    );
+
+    // Share text should have the standard fields
+    expect(clipboardText).toContain("Mixle");
+    expect(clipboardText).toContain("pts");
+    expect(clipboardText).toContain("www.mixle.fun");
+
+    // But should NOT contain any of the best words
+    for (const word of bestWords) {
+      expect(clipboardText.toLowerCase()).not.toContain(word);
+    }
+  });
 });
