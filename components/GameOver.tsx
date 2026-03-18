@@ -111,7 +111,6 @@ export default function GameOver({
         })}
       </div>
 
-      <div className="share-preview">{shareText}</div>
       <button className="share-btn" onClick={handleShare}>
         {canNativeShare ? "Share Results" : "Copy Results to Share"}
       </button>
