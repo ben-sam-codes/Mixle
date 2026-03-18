@@ -81,7 +81,7 @@ export default function GameOver({
         {roundResults.map((r, i) => {
           const best = bestWords[i];
           const playerFoundBest =
-            best && r.word.toLowerCase() === best.word.toLowerCase();
+            best && r.score.total >= best.score.total;
 
           return (
             <div key={i} className="round-score-card">
