@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { track } from "@vercel/analytics";
 import { getDailySeed, getDayNumber } from "@/lib/rng";
 import { generateRoundLetters } from "@/lib/draws";
 import { scoreWord } from "@/lib/scoring";
+import { findBestWord, type BestWordResult } from "@/lib/bestWord";
 import { loadWords, isValidWord, hasAnyValidWord } from "@/lib/words";
 import {
   saveGameState,
@@ -115,6 +116,14 @@ export default function Game() {
 
   const selectedLetters = selectedIndices.map((i) => letters[i]);
   const currentWord = selectedLetters.join("");
+
+  const bestWords: (BestWordResult | null)[] = useMemo(() => {
+    if (!gameOver) return [];
+    return roundResults.map((r) => {
+      const available = [...r.lettersUsed, ...r.carryOverLetters];
+      return findBestWord(available);
+    });
+  }, [gameOver, roundResults]);
 
   const handleLetterTap = useCallback(
     (index: number) => {
@@ -349,6 +358,7 @@ export default function Game() {
       ) : (
         <GameOver
           roundResults={roundResults}
+          bestWords={bestWords}
           totalScore={totalScore}
           dayNum={dayNum}
           shareText={generateShareText()}
