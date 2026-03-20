@@ -296,7 +296,7 @@ export default function Game() {
     if (gameOverReason === "no-word") {
       lines.push("\u274C Game over!");
     }
-    lines.push("mixle.fun");
+    lines.push("www.mixle.fun");
     return lines.join("\n");
   };
 
