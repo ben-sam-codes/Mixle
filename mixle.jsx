@@ -615,7 +615,7 @@ export default function Mixle() {
       }
     });
     lines.push(`Best: ${Math.max(...roundResults.map(r => r.score.total))}pts`);
-    lines.push("mixle.fun");
+    lines.push("www.mixle.fun");
     return lines.join("\n");
   };
 
