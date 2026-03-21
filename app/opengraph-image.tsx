@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { getDayNumber } from "@/lib/rng";
 
 export const alt = "Mixle — Daily Word Game";
 export const size = { width: 1200, height: 630 };
@@ -10,6 +11,8 @@ export default async function Image() {
   const spaceMono = await readFile(
     join(process.cwd(), "public/fonts/SpaceMono-Bold.ttf")
   );
+
+  const dayNum = getDayNumber();
 
   return new ImageResponse(
     (
@@ -40,11 +43,22 @@ export default async function Image() {
         </div>
         <div
           style={{
-            fontSize: "32px",
+            fontSize: "36px",
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            color: "#e8a44a",
+            marginTop: "20px",
+          }}
+        >
+          {`#${dayNum} — Today's Puzzle`}
+        </div>
+        <div
+          style={{
+            fontSize: "26px",
             fontWeight: 700,
             letterSpacing: "0.2em",
             color: "#6b7a90",
-            marginTop: "24px",
+            marginTop: "16px",
           }}
         >
           MAKE YOUR BEST WORD

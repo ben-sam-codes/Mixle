@@ -283,7 +283,12 @@ export default function Game() {
   }, [gameOver, scoreToast, letters, handleSubmit]);
 
   const generateShareText = () => {
-    const lines = [`Mixle ${dayNum} \u00b7 ${totalScore}pts`];
+    const currentStats = stats || loadStats();
+    const streak = currentStats.currentStreak;
+    const header = streak > 1
+      ? `Mixle ${dayNum} \u00b7 ${totalScore}pts \u00b7 \uD83D\uDD25${streak} day streak`
+      : `Mixle ${dayNum} \u00b7 ${totalScore}pts`;
+    const lines = [header];
     roundResults.forEach((r) => {
       const used = r.lettersUsed.length;
       const unused = 9 - used;
