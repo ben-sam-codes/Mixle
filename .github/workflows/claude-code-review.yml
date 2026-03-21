@@ -1,0 +1,55 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude-review:
+    if: |
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'claude')) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          trigger_phrase: "@claude"
+          label_trigger: "claude"
+          use_sticky_comment: false
+          classify_inline_comments: true
+          include_fix_links: true
+          prompt: |
+            Review this pull request. Focus ONLY on:
+            - Bugs or logic errors
+            - Security vulnerabilities
+            - Crashes or data loss risks
+
+            Do NOT comment on:
+            - Code style, naming, or formatting
+            - Minor refactoring suggestions
+            - "Nice to have" improvements
+            - Things that are subjective or preference
+
+            If the code looks good, say so briefly. Only leave inline comments for genuine problems.
+            Post a brief top-level summary, then inline comments only for real issues.
+
+            After reviewing, submit a formal review verdict:
+            - APPROVE if the code is ready to merge with no significant issues
+            - REQUEST_CHANGES if there are bugs, security issues, or other problems that must be fixed before merging
