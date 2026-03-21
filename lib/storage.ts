@@ -55,7 +55,9 @@ export function clearOldStates(): void {
         key !== todayKey &&
         key !== "mixle-stats" &&
         key !== "mixle-nickname" &&
-        key !== "mixle-player-id"
+        key !== "mixle-player-id" &&
+        key !== "mixle-wordlist" &&
+        key !== "mixle-wordlist-version"
       ) {
         localStorage.removeItem(key);
       }
